@@ -1,0 +1,57 @@
+#pragma once
+#include <juce_audio_processors/juce_audio_processors.h>
+#include "DSP.h"
+#include "Presets.h"
+
+class GorylProcessor : public juce::AudioProcessor
+{
+public:
+    GorylProcessor();
+    ~GorylProcessor() override = default;
+
+    void prepareToPlay (double sampleRate, int samplesPerBlock) override;
+    void releaseResources() override {}
+    bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
+    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    using juce::AudioProcessor::processBlock;
+
+    juce::AudioProcessorEditor* createEditor() override;
+    bool hasEditor() const override { return true; }
+
+    const juce::String getName() const override { return "GORYL Vocal Leveler"; }
+    bool acceptsMidi() const override { return false; }
+    bool producesMidi() const override { return false; }
+    double getTailLengthSeconds() const override { return 0.0; }
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram (int) override {}
+    const juce::String getProgramName (int) override { return {}; }
+    void changeProgramName (int, const juce::String&) override {}
+
+    void getStateInformation (juce::MemoryBlock&) override;
+    void setStateInformation (const void*, int) override;
+
+    void applyPreset (int presetIndex);
+
+    juce::AudioProcessorValueTreeState apvts;
+    gdsp::LoudnessMeter meter;
+    std::atomic<float> compGrDb { 0.f }, limGrDb { 0.f };
+
+private:
+    static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
+    void updateCoefficients();
+
+    std::atomic<float>* p[gparams::P_COUNT] {};
+    std::atomic<float>* pBypass = nullptr;
+
+    double fs = 44100.0;
+    gdsp::ChannelEq eq[2];
+    gdsp::DeEsser deesser;
+    gdsp::Rider rider;
+    gdsp::Compressor comp;
+    gdsp::Limiter limiter;
+    gdsp::Biquad sideHp[2];
+    double inG = 1.0, outG = 1.0;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GorylProcessor)
+};
